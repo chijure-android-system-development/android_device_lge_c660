@@ -110,11 +110,6 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
 
 - `btld` no está enganchado explícitamente en `init.muscat.rc`; Bluetooth
   levantó igual en las pruebas, pero no se investigó el mecanismo exacto.
-- **SIM / red móvil sin probar**: no se confirmó llamadas, SMS ni datos
-  móviles reales — falta insertar SIM y no se sabe si el equipo está
-  liberado (unlocked) o con lock de operador. `rild` sí habla con el modem
-  real (RSSI, celdas WCDMA), pero eso no confirma que una SIM de otro
-  operador vaya a ser aceptada.
 - Canales SMD de datos extra fallan al abrir (probable límite en
   tethering/segunda conexión de datos, sin confirmar):
   ```
@@ -165,6 +160,11 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
   framebuffer del kernel (`drivers/video/msm` en `kernel-c660-src`) — no
   investigado más a fondo por decisión explícita, es cosmético (solo aparece
   con el equipo apagado en modo carga).
+- **SIM / red móvil sin probar** (dejado para el final a propósito): no se
+  confirmó llamadas, SMS ni datos móviles reales — falta insertar SIM y no se
+  sabe si el equipo está liberado (unlocked) o con lock de operador. `rild`
+  sí habla con el modem real (RSSI, celdas WCDMA), pero eso no confirma que
+  una SIM de otro operador vaya a ser aceptada.
 
 ## Overlays
 
