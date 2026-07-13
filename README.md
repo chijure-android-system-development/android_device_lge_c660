@@ -151,6 +151,24 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
     sin garantía de que el bloque de hardware del rotador esté bien cableado
     en este board. **Revertido por decisión explícita** — no vale la pena el
     riesgo/esfuerzo solo por el color del preview.
+- **Chargermode (`sbin/chargerlogo`) parpadea/tiembla visualmente al cargar
+  con el equipo apagado — investigado, sin fix viable por ahora.** Disparado
+  desde `init.muscat.rc` (`on boot-pause` → `exec sbin/chargerlogo`) cuando el
+  kernel arranca con `lge.reboot=pwroff` en el cmdline (carga sin botón de
+  power). Verificado con un nandroid backup real (CWM) que el binario
+  `sbin/chargerlogo` es **byte a byte idéntico** al de nuestro árbol — no hay
+  corrupción ni modificación de nuestro lado. El framebuffer sí tiene doble
+  buffer real a nivel kernel (`/sys/class/graphics/fb0/virtual_size` =
+  `240,640` para una pantalla de 320 de alto). El flag `BOARD_HAS_JANKY_BACKBUFFER`
+  ya existente en `BoardConfig.mk` es un fix de **stride** para `minui`
+  (recovery), no de timing de doble buffer, y no aplica a `chargerlogo` (no
+  comparten código). El panel usa interfaz **EBI2** (bus de pantalla más
+  viejo, conocido por quirks de timing en volteo de buffers en esta
+  generación de MSM7x27). Sin el código fuente de `chargerlogo` (binario
+  propietario de LG), la única vía que queda es investigar el driver de
+  framebuffer del kernel (`drivers/video/msm` en `kernel-c660-src`) — no
+  investigado más a fondo por decisión explícita, es cosmético (solo aparece
+  con el equipo apagado en modo carga).
 
 ## Overlays
 
