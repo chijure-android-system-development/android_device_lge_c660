@@ -90,8 +90,8 @@ abajo:
   confirmando que el bug de `extract-files.sh` es real (no un error nuestro).
 - Ellos sí traen el `BCM43291A0_003.001.013.0141.0153.hcd` de Bluetooth — existe
   en otras unidades/lotes de C660, pero no en la usada para este bring-up
-  (`V10a-Aug-23-2011`), que usa `btld` en su lugar. Bluetooth funciona en
-  runtime sin ese archivo, así que no hizo falta traerlo.
+  (`V10a-Aug-23-2011`). Bluetooth funciona en runtime sin ese archivo, así que
+  no hizo falta traerlo.
 
 Bugs del script oficial encontrados al extraer contra un equipo real:
 
@@ -100,11 +100,13 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
   `setup-makefiles.sh` los espera en `proprietary/etc/wl/`. Hay que mover los
   archivos a mano tras extraer.
 - El firmware Bluetooth genérico que pide el script
-  (`BCM43291A0_003.001.013.0141.0153.hcd`) **no existe** en este equipo — usa
-  `btld` (loader propio de LG) en vez del genérico `brcm_patchram_plus`. Se
-  extrajo `btld` real y se copia a `system/bin/btld` en el lugar de esa línea
-  en `c660-vendor-blobs.mk`. Bluetooth igual levanta bien en runtime (`hci0` UP,
-  BlueZ registrando servicios) sin ese firmware.
+  (`BCM43291A0_003.001.013.0141.0153.hcd`) **no existe** en este equipo, y
+  `brcm_patchram_plus` sigue adelante igual sin él. Bluetooth levanta bien en
+  runtime (`hci0` UP, BlueZ registrando servicios, pairing/A2DP validados) sin
+  ese firmware. `btld` (loader propio de LG, alternativa a `brcm_patchram_plus`)
+  se extrajo en su momento pero nunca se enganchó en ningún `.rc`/script — se
+  quitó del build (`c660-vendor-blobs.mk`) y del equipo: no resolvía ningún
+  problema real y arriesgaba romper un Bluetooth que ya funciona.
 
 ### Pendiente
 
