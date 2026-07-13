@@ -132,11 +132,28 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
     build (`Cant open rotator device` / `Failed to start control channel for
     framebuffer 0`, sin crashear, solo reintentando 50 veces y fallando).
   - El código fuente del driver existe (`kernel-c660-src/drivers/char/msm_rotator.c`)
-    pero no está habilitado en `arch/arm/configs/cyanogenmod_muscat_defconfig`.
-    Habilitarlo + recompilar el kernel es la única vía real hacia adelante,
-    sin garantía de que el bloque de hardware del rotador esté bien cableado
-    en este board. **Revertido por decisión explícita** — no vale la pena el
-    riesgo/esfuerzo solo por el color del preview.
+    pero **no puede habilitarse ni recompilando**: su `Kconfig` (`drivers/char/Kconfig:1153`)
+    exige `depends on (ARCH_MSM7X30 || ARCH_MSM8X60)`, y este kernel es
+    `ARCH_MSM7X27` — la dependencia nunca se cumple, así que Kconfig descarta
+    la opción sin importar qué se escriba a mano en el defconfig. El driver
+    fue escrito para un bloque de hardware de rotación distinto (revisión de
+    silicio MSM7x30/8x60), no el del MSM7227A del C660. **Camino cerrado de
+    forma definitiva, no es una decisión de riesgo.**
+  - Se investigó también si la app de Cámara **stock** de LG (`com.lge.camera`,
+    extraída de un nandroid backup real pre-CM7) resuelve el color distinto.
+    Se confirmó con `md5sum` que usa el mismo `libcamera.so`/`liboemcamera.so`
+    (idénticos a los nuestros) y que el kernel stock **también** carece de
+    `msm_rotator` (mismos síntomas de overlay fallido esperables). Se
+    descompiló el `.odex` con `dexdump`/`apktool` — el `.apk` stock no trae
+    ningún `classes.dex` embebido, todo el código vive solo en el `.odex`,
+    con offsets de campo "quick" horneados contra el framework.jar stock de
+    LG. Al instalarlo directo sobre CM7 (mismo blob, mismo hardware) crasheó
+    al instante (`SIGSEGV`/`deadbaad` en `dlfree`, corrupción de heap por
+    incompatibilidad de ABI) — confirma que no es solo una diferencia de
+    parámetros de cámara, la app entera está atada al framework exacto de
+    LG. Un des-odex contra el framework stock (también disponible en el
+    mismo dump) podría producir un `classes.dex` portable para probar, pero
+    se descartó seguir por esta vía — decisión explícita del usuario.
 - **Chargermode (`sbin/chargerlogo`) parpadea/tiembla visualmente al cargar
   con el equipo apagado — investigado, sin fix viable por ahora.** Disparado
   desde `init.muscat.rc` (`on boot-pause` → `exec sbin/chargerlogo`) cuando el
