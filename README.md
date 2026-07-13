@@ -108,10 +108,6 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
 
 ### Pendiente
 
-- **Build fingerprint**: `vendor/cyanogen/products/cyanogen_c660.mk` fuerza
-  `V10a-Aug-03-2011.2ED2F90A70`, pero el equipo real (y los blobs extraídos)
-  son de `V10a-Aug-23-2011.2ED2FC1835`. No bloqueó nada in situ, pero conviene
-  alinearlo por si algún blob (RIL/seguridad LG) valida el build internamente.
 - `btld` no está enganchado explícitamente en `init.muscat.rc`; Bluetooth
   levantó igual en las pruebas, pero no se investigó el mecanismo exacto.
 - **SIM / red móvil sin probar**: no se confirmó llamadas, SMS ni datos
