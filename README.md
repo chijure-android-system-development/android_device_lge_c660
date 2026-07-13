@@ -108,8 +108,6 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
 
 ### Pendiente
 
-- `btld` no está enganchado explícitamente en `init.muscat.rc`; Bluetooth
-  levantó igual en las pruebas, pero no se investigó el mecanismo exacto.
 - Canales SMD de datos extra fallan al abrir (probable límite en
   tethering/segunda conexión de datos, sin confirmar):
   ```
