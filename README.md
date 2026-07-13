@@ -110,11 +110,6 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
 
 ### Pendiente
 
-- Canales SMD de datos extra fallan al abrir (probable límite en
-  tethering/segunda conexión de datos, sin confirmar):
-  ```
-  smd_pkt_open: DATA8_CNTL / DATA9_CNTL / DATA12_CNTL / DATA13_CNTL / DATA14_CNTL open failed -19
-  ```
 - **Preview de cámara con color incorrecto (azul se ve naranja) — investigado,
   sin fix viable por ahora.** La foto capturada (JPEG real) sale con el color
   correcto; el bug es exclusivo del preview en pantalla. Causa raíz completa:
@@ -165,6 +160,21 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
   sabe si el equipo está liberado (unlocked) o con lock de operador. `rild`
   sí habla con el modem real (RSSI, celdas WCDMA), pero eso no confirma que
   una SIM de otro operador vaya a ser aceptada.
+- **Canales SMD de datos extra fallan al abrir** (dejado para el final a
+  propósito):
+  ```
+  smd_pkt_open: DATA8_CNTL / DATA9_CNTL / DATA12_CNTL / DATA13_CNTL / DATA14_CNTL open failed -19
+  ```
+  Causa raíz confirmada: `smd_named_open_on_edge()` en
+  `kernel-c660-src/arch/arm/mach-msm/smd_pkt.c:568` devuelve el error directo
+  del **firmware del módem** (baseband/AMSS) — el error `-19` (`ENODEV`)
+  significa que esta versión de baseband nunca registró esos canales extra en
+  su tabla SMD (solo trae `DATA5/6/7_CNTL`, los primarios, que sí funcionan y
+  ya sostienen llamadas/SMS/datos). No es arreglable desde el kernel/ROM;
+  requeriría un baseband distinto (flashear módem es riesgo alto, fuera de
+  scope). Posible impacto real: conexiones de datos concurrentes/tethering
+  con múltiples PDP contexts — sin confirmar si tethering realmente falla o
+  si esto es solo ruido de log sin impacto.
 
 ## Overlays
 
