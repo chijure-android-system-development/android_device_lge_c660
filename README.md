@@ -124,6 +124,33 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
   ```
   smd_pkt_open: DATA8_CNTL / DATA9_CNTL / DATA12_CNTL / DATA13_CNTL / DATA14_CNTL open failed -19
   ```
+- **Preview de cámara con color incorrecto (azul se ve naranja) — investigado,
+  sin fix viable por ahora.** La foto capturada (JPEG real) sale con el color
+  correcto; el bug es exclusivo del preview en pantalla. Causa raíz completa:
+  - El SurfaceView del preview llega a SurfaceFlinger ya en RGBA — la
+    conversión YUV→RGB la hace el blob (`libcamera.so`) internamente, no
+    nuestro código, y esa conversión interna tiene los canales Cb/Cr
+    invertidos.
+  - El blob soporta el overlay de hardware (MDP), el camino correcto de
+    Qualcomm para esto (`useOverlay()`/`setOverlay()` en su vtable), pero
+    `useOverlay()` devuelve `false` hardcodeado (confirmado con un log de
+    diagnóstico en tiempo de ejecución).
+  - Se construyó un wrapper (`device/lge/c660/libcamera/`, patrón idéntico a
+    `device/huawei/y210/libcamera/`) que fuerza `useOverlay()=true` por
+    delegación normal de C++ (sin hackear vtable, a diferencia del wrapper
+    del Y210 — el vtable del blob del C660 ya coincide con el header). Esto
+    sí activó el código de overlay de `CameraService.cpp` (que ya existía sin
+    usar, solo hacía falta `BOARD_OVERLAY_FORMAT_YCrCb_420_SP := true` en
+    `BoardConfig.mk`), y el blob's `setOverlay()` real se llegó a invocar —
+    pero falló en la capa de **kernel**: `/dev/msm_rotator` no existe en este
+    build (`Cant open rotator device` / `Failed to start control channel for
+    framebuffer 0`, sin crashear, solo reintentando 50 veces y fallando).
+  - El código fuente del driver existe (`kernel-c660-src/drivers/char/msm_rotator.c`)
+    pero no está habilitado en `arch/arm/configs/cyanogenmod_muscat_defconfig`.
+    Habilitarlo + recompilar el kernel es la única vía real hacia adelante,
+    sin garantía de que el bloque de hardware del rotador esté bien cableado
+    en este board. **Revertido por decisión explícita** — no vale la pena el
+    riesgo/esfuerzo solo por el color del preview.
 
 ## Overlays
 
