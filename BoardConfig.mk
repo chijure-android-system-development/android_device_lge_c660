@@ -38,6 +38,7 @@ BOARD_CUSTOM_GRAPHICS           := ../../../device/lge/c660/recovery/graphics.c
 
 TARGET_PROVIDES_LIBAUDIO := true
 TARGET_PROVIDES_LIBRIL := true
+# Blob real vendor/lge/c660/proprietary/lib/libril.so ya extraido del c660.
 
 BOARD_HAVE_BLUETOOTH := true
 BOARD_HAVE_BLUETOOTH_BCM := true
