@@ -3,77 +3,62 @@
     Overlay del C660 sobre frameworks/base/core/res/res/layout/usb_storage_activity.xml
 
     El bloque del boton usaba layout_alignParentBottom (anclado al fondo de
-    la pantalla, sin relacion con el texto del mensaje arriba). En una
-    pantalla chica de 240x320 (QVGA) como la del C660, el texto largo del
-    mensaje ("USB connected"/"You have connected your phone...") se solapaba
-    con el boton "Turn on USB storage".
+    la pantalla, sin relacion con el texto del mensaje arriba). En la
+    pantalla de 240x320 (QVGA, ldpi) del C660 el texto largo del mensaje
+    se solapaba con el boton "Turn on USB storage".
 
-    Fix: el icono+titulo+mensaje van dentro de un ScrollView (peso 1, ocupa
-    el espacio restante) y el boton queda debajo, fuera del scroll, siempre
-    visible. Root cambiado de RelativeLayout a LinearLayout vertical para
-    lograr esto SIN declarar ningun id nuevo: UsbStorageActivity.java hace
-    findViewById() por id de recursos internos (mount_button, banner, etc.)
-    que NO estan en public.xml, es decir se numeran dinamicamente por orden
-    de aparicion en el build; agregar un id nuevo correa esa numeracion y
-    causa un ClassCastException en tiempo de ejecucion contra el
-    SystemUI.apk ya compilado (confirmado en hardware real). El set de ids
-    declarados acá es exactamente el mismo que el original: main, icon,
-    banner, message, mount_button, unmount_button, progress.
+    Ademas el icono usb_android.png nativo en ldpi es 135x135px: mas del
+    40% del alto de esta pantalla, dejando muy poco espacio para el resto.
+
+    Fix: icono achicado a 64dp (en vez de scrollear el contenido) + boton
+    anclado debajo del mensaje en vez de al fondo de la pantalla. Con el
+    icono chico entra todo sin scroll. Mismo set de ids que el original
+    (main, icon, banner, message, mount_button, unmount_button, progress):
+    un id nuevo corre la numeracion de los ids internos privados
+    (mount_button/banner no estan en public.xml) y rompe el SystemUI.apk
+    ya compilado (confirmado con un crash real en hardware).
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
+    android:gravity="center"
     android:padding="18dip"
     >
 
-    <ScrollView
+    <ImageView android:id="@+id/icon"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentTop="true"
+        android:layout_width="64dip"
+        android:layout_height="64dip"
+        android:scaleType="fitCenter"
+        android:src="@drawable/usb_android" />
+
+    <TextView android:id="@+id/banner"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@id/icon"
+        android:layout_marginTop="10dip"
         android:layout_width="match_parent"
-        android:layout_height="0dip"
-        android:layout_weight="1"
-        >
+        android:layout_height="wrap_content"
+        android:textSize="24sp"
+        android:gravity="center"
+        android:text="@string/usb_storage_title" />
 
-        <RelativeLayout android:id="@+id/main"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            >
-
-            <ImageView android:id="@+id/icon"
-                android:layout_centerHorizontal="true"
-                android:layout_alignParentTop="true"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:src="@drawable/usb_android" />
-
-            <TextView android:id="@+id/banner"
-                android:layout_centerHorizontal="true"
-                android:layout_below="@id/icon"
-                android:layout_marginTop="10dip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="24sp"
-                android:gravity="center"
-                android:text="@string/usb_storage_title" />
-
-            <TextView android:id="@+id/message"
-                android:layout_below="@id/banner"
-                android:layout_marginTop="10dip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="14sp"
-                android:gravity="center"
-                android:text="@string/usb_storage_message" />
-
-        </RelativeLayout>
-    </ScrollView>
+    <TextView android:id="@+id/message"
+        android:layout_below="@id/banner"
+        android:layout_marginTop="10dip"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:text="@string/usb_storage_message" />
 
     <RelativeLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@id/message"
         android:layout_marginTop="20dip"
-        android:layout_marginBottom="20dip"
         >
 
         <Button android:id="@+id/mount_button"
@@ -100,4 +85,4 @@
             />
 
     </RelativeLayout>
-</LinearLayout>
+</RelativeLayout>
