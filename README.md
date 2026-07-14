@@ -171,6 +171,45 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
     — la app de Cámara crashea después con `setPreviewDisplay failed`. El
     blob sí reacciona a ese parámetro, pero para peor. Revertido por
     completo (wrapper temporal eliminado, nunca comiteado).
+  - **Intento final: reemplazar el glue userspace por
+    `QualcommCameraHardware.cpp` de código abierto (CAF/Ricardo Cerqueira,
+    via `android_device_lge_p500`), manteniendo nuestro `liboemcamera.so`
+    real como motor de bajo nivel — pensado también como base reusable para
+    un futuro port a CM9/ICS (ver más abajo). Compiló limpio contra nuestro
+    árbol (solo hubo que agregar `getShutterSound()`/`encodeData()` como
+    no-ops, exigidos por nuestro `CameraHardwareInterface.h`). Los símbolos
+    "core" coinciden con nuestro blob (`mm_camera_init`, `cam_frame`,
+    `jpeg_encoder_*`, `cam_conf`) — pero al probarlo en hardware real,
+    **crasheó `mediaserver`** (`SIGSEGV` en dirección `0x0`) dentro de
+    `startCamera()`, escribiendo a través de un puntero de
+    `dlsym(liboemcamera.so, "mmcamera_camframe_callback")` que devuelve
+    `NULL`. Confirmado con `nm -D`: nuestro `liboemcamera.so` **no exporta**
+    `mmcamera_camframe_callback` ni `mmcamera_jpegfragment_callback` ni
+    `mmcamera_jpeg_callback` ni `camframe_timeout_callback` ni
+    `mmcamera_camframe_videocallback` (solo `mmcamera_shutter_callback`
+    existe de ese grupo) — en cambio expone un esquema de hilos
+    (`camframe_fb_thread`/`launch_camframe_fb_thread`) que esta versión del
+    código no usa. Es una generación/fork del motor de cámara real
+    (`liboemcamera.so`) distinta a la que asume el código de p500 para el
+    mecanismo de entrega de frames — no es un ajuste chico, haría falta
+    reversear el ABI real de callbacks de este blob específico sin ninguna
+    referencia conocida. **Revertido por completo** (fuente descartada,
+    `.mk` restaurado, verificado en equipo real que la cámara volvió a
+    funcionar sin crashes).
+  - **Nota para un futuro port a CM9/ICS:** este intento no fue en vano —
+    ICS cambia la arquitectura de `CameraHardwareInterface` (reemplaza el
+    mecanismo de overlay por uno basado en `SurfaceTexture`), así que el
+    blob cerrado actual, compilado contra el ABI de Gingerbread, casi
+    seguro **no cargará tal cual** contra un `CameraService` de ICS sin una
+    capa nueva de todos modos — con o sin el bug de color de hoy resuelto.
+    El camino real para tener cámara en CM9 sigue siendo adaptar un HAL de
+    código abierto, pero **haciendo el reverse-engineering real del ABI de
+    callbacks de nuestro `liboemcamera.so`** antes de portar cualquier
+    fuente ajena (con herramientas como IDA/Ghidra sobre el blob, no
+    asumiendo que coincide con otro device tree por los nombres de función
+    "core"). Los ioctls base del kernel sí coinciden entre versiones CAF
+    (ver más abajo), así que esa parte de la investigación de hoy sigue
+    siendo válida.
 - **Chargermode (`sbin/chargerlogo`) parpadea/tiembla visualmente al cargar
   con el equipo apagado — investigado, sin fix viable por ahora.** Disparado
   desde `init.muscat.rc` (`on boot-pause` → `exec sbin/chargerlogo`) cuando el
