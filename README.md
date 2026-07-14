@@ -154,6 +154,23 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
     LG. Un des-odex contra el framework stock (también disponible en el
     mismo dump) podría producir un `classes.dex` portable para probar, pero
     se descartó seguir por esta vía — decisión explícita del usuario.
+  - Se evaluó reemplazar el blob por el `QualcommCameraHardware.cpp` de
+    código abierto que traen otros device trees hermanos de LG Optimus
+    (`android_device_lge_p350`/`p500`, sensor OV5642). El sensor real del
+    C660 es **MT9T113** (`CONFIG_MT9T113=y` en el defconfig) — no coincide,
+    y esos archivos no tienen ninguna referencia a ese sensor. Se encontró
+    un mirror más genérico de Code Aurora Forum (`dzo/hardware_qcom_camera`,
+    2011) con la misma cadena de log `"Resetting mUseOverlay to false"` que
+    aparece en nuestro blob — ahí ese mensaje sale de `setStrTextures()`
+    cuando el parámetro de cámara `"strtextures"` se pone en `"on"` — pero
+    ese archivo tampoco implementa `useOverlay()`/`setOverlay()` reales, así
+    que no hay garantía de que aplique a nuestro blob. Se probó forzar
+    `strtextures=off` explícitamente vía `setParameters()` justo después de
+    crear el delegado (antes de que `CameraService.Client` preguntara
+    `useOverlay()`) con un wrapper temporal: **resultado negativo concreto**
+    — la app de Cámara crashea después con `setPreviewDisplay failed`. El
+    blob sí reacciona a ese parámetro, pero para peor. Revertido por
+    completo (wrapper temporal eliminado, nunca comiteado).
 - **Chargermode (`sbin/chargerlogo`) parpadea/tiembla visualmente al cargar
   con el equipo apagado — investigado, sin fix viable por ahora.** Disparado
   desde `init.muscat.rc` (`on boot-pause` → `exec sbin/chargerlogo`) cuando el
