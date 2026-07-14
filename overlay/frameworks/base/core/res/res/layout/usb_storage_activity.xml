@@ -10,7 +10,7 @@
     Ademas el icono usb_android.png nativo en ldpi es 135x135px: mas del
     40% del alto de esta pantalla, dejando muy poco espacio para el resto.
 
-    Fix: icono achicado a 64dp (en vez de scrollear el contenido) + boton
+    Fix: icono achicado a 100dp (en vez de scrollear el contenido) + boton
     anclado debajo del mensaje en vez de al fondo de la pantalla. Con el
     icono chico entra todo sin scroll. Mismo set de ids que el original
     (main, icon, banner, message, mount_button, unmount_button, progress):
@@ -29,8 +29,8 @@
     <ImageView android:id="@+id/icon"
         android:layout_centerHorizontal="true"
         android:layout_alignParentTop="true"
-        android:layout_width="64dip"
-        android:layout_height="64dip"
+        android:layout_width="100dip"
+        android:layout_height="100dip"
         android:scaleType="fitCenter"
         android:src="@drawable/usb_android" />
 
