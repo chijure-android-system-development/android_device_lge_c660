@@ -110,9 +110,19 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
 
 ### Pendiente
 
-- **Preview de cámara con color incorrecto (azul se ve naranja) — investigado,
-  sin fix viable por ahora.** La foto capturada (JPEG real) sale con el color
-  correcto; el bug es exclusivo del preview en pantalla. Causa raíz completa:
+- 🔴 **PRIORITARIO — Preview de cámara con color incorrecto.** No es
+  cosmético: al apuntar a personas, la piel sale con un tono azulado/pálido
+  (efecto "Avatar") — rompe el caso de uso más común de la cámara, aunque
+  la foto final guardada sea correcta. Sigue sin fix confirmado, pero
+  **queda una vía real sin probar**: parchar directamente el binario del
+  blob (`libcamera.so`, con Ghidra/IDA) en la función interna que hace la
+  conversión YUV→RGB para el `SurfaceView` — ya sabemos que esa conversión
+  tiene los canales Cb/Cr invertidos (ver abajo) y que es un problema
+  autocontenido dentro del blob, no del framework ni del kernel. Es la
+  única vía que no se intentó todavía. Investigación previa (por si se
+  retoma):
+  - La foto capturada (JPEG real) sale con el color correcto; el bug es
+    exclusivo del preview en pantalla. Causa raíz completa:
   - El SurfaceView del preview llega a SurfaceFlinger ya en RGBA — la
     conversión YUV→RGB la hace el blob (`libcamera.so`) internamente, no
     nuestro código, y esa conversión interna tiene los canales Cb/Cr
