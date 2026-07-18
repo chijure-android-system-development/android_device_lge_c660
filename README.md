@@ -72,8 +72,53 @@ cp arch/arm/boot/zImage device/lge/c660/kernel
 ```
 
 Confirmado en equipo real: `kbd_pp2106` se registra como input device y llegan
-eventos reales de tecla (`getevent`) al deslizar el teclado. El binario
-original queda como referencia en `device/lge/c660/kernel.bak-original`.
+eventos reales de tecla (`getevent`) al deslizar el teclado. Se eliminó el
+binario original (`kernel.bak-original`) del árbol; queda un solo kernel
+compilado (`device/lge/c660/kernel`), recuperable del historial de git si
+hiciera falta comparar.
+
+Además se detectó y corrigió un bug real en `drivers/input/keyboard/kbd_pp2106.c`:
+`pp2106_fetchkeys()` no validaba límites de fila/columna antes de indexar la
+tabla de teclas. Cada `pp2106_hwreset()` (al iniciar el driver y en cada
+resume de pantalla) dispara un falling-edge espurio de IRQ antes de que el
+chip esté listo, y el bit-banging devuelve basura fuera de la grilla 7x7 real
+— sin el chequeo, eso indexaba fuera de `pp2106_keycode[]` e inyectaba una
+tecla fantasma en cada wake de pantalla (causaba que "se active el teclado
+virtual solo"). Confirmado en `dmesg` real: ahora se descarta la lectura en
+vez de inyectarla.
+
+### Bug de parpadeo en `chargerlogo` (RESUELTO 2026-07-17)
+
+Ver antes en este mismo documento: `chargerlogo` parpadeaba (imagen → negro →
+imagen) en modo carga con el equipo apagado. Se descartó que fuera el binario
+(confirmado byte a byte idéntico al de un nandroid stock real, igual que las
+imágenes `.rle`) y se descartaron dos hipótesis de timing de vsync a nivel de
+driver (no cambiaron nada en hardware real).
+
+La causa real se encontró comparando el `.config` real de LG (extraído de
+`/proc/config.gz` de un boot con el kernel stock genuino, compilado por
+`lg-electronics@viewty2-desktop` en 2011) contra el nuestro. Prueba A/B en el
+equipo real armando un boot.img híbrido (kernel stock + nuestro ramdisk/`
+system`) confirmó que con el kernel stock **no** parpadea — o sea, la
+diferencia estaba en el kernel, no en `chargerlogo` ni en el resto del ROM.
+
+Dos diferencias de config resultaron ser la causa (ambas ya en
+`cyanogenmod_muscat_defconfig`, y ya presentes sin usar en
+`muscat-perf_defconfig`):
+
+- `CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y` (en vez de `_INTERACTIVE`) — con
+  el governor "interactive" el CPU arranca en su clock más bajo hasta detectar
+  carga sostenida, justo cuando `chargerlogo` necesita decodificar RLE y
+  componer el frame rápido en modo carga (equipo recién arrancando).
+- `CONFIG_FRAMEBUFFER_CONSOLE=y` (+ `CONFIG_FONTS`/`CONFIG_FONT_6x11`) —
+  registra una consola de framebuffer que engancha al driver de video más
+  temprano en el boot.
+
+Probado individualmente: el cambio de governor solo **no** alcanzó (seguía
+parpadeando). Con los dos cambios juntos, confirmado sin parpadeo en el
+equipo real, en builds sucesivos, incluso con el árbol de kernel ya limpio
+(sin ningún parche de código extra — la única modificación de código real
+que quedó es el fix de `kbd_pp2106.c` de arriba).
 
 ## Blobs propietarios (`vendor/lge/c660`)
 
@@ -220,24 +265,6 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
     "core"). Los ioctls base del kernel sí coinciden entre versiones CAF
     (ver más abajo), así que esa parte de la investigación de hoy sigue
     siendo válida.
-- **Chargermode (`sbin/chargerlogo`) parpadea/tiembla visualmente al cargar
-  con el equipo apagado — investigado, sin fix viable por ahora.** Disparado
-  desde `init.muscat.rc` (`on boot-pause` → `exec sbin/chargerlogo`) cuando el
-  kernel arranca con `lge.reboot=pwroff` en el cmdline (carga sin botón de
-  power). Verificado con un nandroid backup real (CWM) que el binario
-  `sbin/chargerlogo` es **byte a byte idéntico** al de nuestro árbol — no hay
-  corrupción ni modificación de nuestro lado. El framebuffer sí tiene doble
-  buffer real a nivel kernel (`/sys/class/graphics/fb0/virtual_size` =
-  `240,640` para una pantalla de 320 de alto). El flag `BOARD_HAS_JANKY_BACKBUFFER`
-  ya existente en `BoardConfig.mk` es un fix de **stride** para `minui`
-  (recovery), no de timing de doble buffer, y no aplica a `chargerlogo` (no
-  comparten código). El panel usa interfaz **EBI2** (bus de pantalla más
-  viejo, conocido por quirks de timing en volteo de buffers en esta
-  generación de MSM7x27). Sin el código fuente de `chargerlogo` (binario
-  propietario de LG), la única vía que queda es investigar el driver de
-  framebuffer del kernel (`drivers/video/msm` en `kernel-c660-src`) — no
-  investigado más a fondo por decisión explícita, es cosmético (solo aparece
-  con el equipo apagado en modo carga).
 - **SIM / red móvil sin probar** (dejado para el final a propósito): no se
   confirmó llamadas, SMS ni datos móviles reales — falta insertar SIM y no se
   sabe si el equipo está liberado (unlocked) o con lock de operador. `rild`
