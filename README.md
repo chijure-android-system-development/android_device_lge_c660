@@ -158,7 +158,13 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
 - 🔴 **PRIORITARIO — Preview de cámara con color incorrecto.** No es
   cosmético: al apuntar a personas, la piel sale con un tono azulado/pálido
   (efecto "Avatar") — rompe el caso de uso más común de la cámara, aunque
-  la foto final guardada sea correcta. Sigue sin fix confirmado, pero
+  la foto final guardada sea correcta. **Confirmado también con el kernel
+  stock genuino de LG** (mismo `/system` nuestro, boot.img híbrido usado
+  para el A/B de `chargerlogo` el 2026-07-17): apuntando a un objeto azul,
+  el preview lo muestra naranja — el bug persiste igual con el kernel 100%
+  original, confirmando que es autocontenido en el blob `libcamera.so`
+  (canales Cb/Cr invertidos, ver más abajo) y no algo introducido por
+  `kernel-c660-src` ni por ningún cambio nuestro. Sigue sin fix confirmado, pero
   **queda una vía real sin probar**: parchar directamente el binario del
   blob (`libcamera.so`, con Ghidra/IDA) en la función interna que hace la
   conversión YUV→RGB para el `SurfaceView` — ya sabemos que esa conversión
