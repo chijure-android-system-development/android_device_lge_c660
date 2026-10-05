@@ -20,7 +20,8 @@ PRODUCT_COPY_FILES += \
 # Board-specific init
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/init.muscat.rc:root/init.muscat.rc \
-    $(LOCAL_PATH)/ueventd.muscat.rc:root/ueventd.muscat.rc
+    $(LOCAL_PATH)/ueventd.muscat.rc:root/ueventd.muscat.rc \
+    $(LOCAL_PATH)/initlogo.rle:root/initlogo.rle
 
 # BT startup
 PRODUCT_COPY_FILES += \

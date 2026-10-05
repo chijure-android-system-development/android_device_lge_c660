@@ -59,6 +59,8 @@ TARGET_SPECIFIC_HEADER_PATH := device/lge/c660/include
 TARGET_LIBAGL_USE_GRALLOC_COPYBITS := true
 BOARD_CAMERA_USE_GETBUFFERINFO := true
 BOARD_USE_CAF_LIBCAMERA := true
+# Preview heap is YUV420SP with Cb/Cr swapped; swap chroma before postBuffer.
+BOARD_CAMERA_PREVIEW_SWAP_CHROMA := true
 
 BOARD_WLAN_DEVICE := bcm4329
 WIFI_DRIVER_FW_STA_PATH         := "/system/etc/wl/rtecdc.bin"

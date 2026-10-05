@@ -37,6 +37,17 @@ lo registre, mismo patrón que usa `device/huawei/y210`).
   — el parche a `frameworks/base` quedó sin uso y **se revirtió** (no tiene
   sentido tocar código compartido por todos los dispositivos del árbol para
   algo que ya no hace falta).
+- **Bluetooth**: `patches/frameworks_base_bluetooth.patch` evita el segundo
+  `StopDiscovery` cuando BlueZ ya terminó el inquiry. Sin eso, un scan que sí
+  ve equipos deja `Invalid discovery session` y puede dejar la sesión colgada.
+- **Logo de arranque**: `initlogo.rle` va en el ramdisk (`c660.mk`). Es el
+  logo LG del `initlogo.rle` del P500 (CM7), reducido a unos 84 px de ancho,
+  con «by chijure» debajo, sobre negro, a 240×320. Confirmado en el equipo.
+  `patches/system_core_init_logo.patch` hace que `init` respete el stride:
+  el framebuffer mide 240 px pero cada línea ocupa 512 bytes, y sin ese
+  salto la imagen se corre 16 px por fila.
+  Los parches se aplican con `bash device/lge/c660/patches/apply-patches.sh`
+  desde la raíz, sobre árboles limpios. No correrlo ahora: ya están aplicados.
 - **Kernel propio compilado desde fuente** (ver sección Kernel abajo) para
   arreglar el teclado QWERTY físico, que el kernel prebuilt del árbol oficial
   traía deshabilitado.
@@ -116,9 +127,25 @@ Dos diferencias de config resultaron ser la causa (ambas ya en
 
 Probado individualmente: el cambio de governor solo **no** alcanzó (seguía
 parpadeando). Con los dos cambios juntos, confirmado sin parpadeo en el
-equipo real, en builds sucesivos, incluso con el árbol de kernel ya limpio
-(sin ningún parche de código extra — la única modificación de código real
-que quedó es el fix de `kbd_pp2106.c` de arriba).
+equipo real. No apagar `CONFIG_FRAMEBUFFER_CONSOLE`: el governor solo no
+basta, y chargerlogo lo necesita junto con `CONFIG_FONT_6x11`.
+
+### Cursor `ANDROID_` (RESUELTO, kernel #10)
+
+El bootlogo de oemsbl se queda en el panel y fbcon dibuja encima el cursor
+subrayado (`CUR_UNDERLINE`). `CONFIG_LOGO` y `CONFIG_FB_MSM_LOGO` están
+apagados. `msm_fb_open` volvía a activar la consola cuando `ref_cnt` pasaba
+de 0, y eso redibujaba el cursor sobre la UI.
+
+En `kernel-c660-src/drivers/video/msm/msm_fb.c`, `msm_fb_open` ya no llama
+`msm_fb_set_console_inactive(0)`. La consola sigue registrada para
+chargerlogo. El zImage anterior no se versiona (`kernel.bak-fbcon` queda
+solo en local). El que corre es el #10 (`2.6.35.10-cyanogenmod`,
+2026-10-05 01:09:55 UTC).
+`dmesg` todavía dice una vez `Console: switching to colour frame buffer
+device 40x29` al encender el panel. Confirmado en el equipo: `ANDROID_` no
+vuelve. El `kernel` del device tree es este zImage; el zip de la SD es
+anterior y no lo trae.
 
 ## Blobs propietarios (`vendor/lge/c660`)
 
@@ -153,31 +180,31 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
   quitó del build (`c660-vendor-blobs.mk`) y del equipo: no resolvía ningún
   problema real y arriesgaba romper un Bluetooth que ya funciona.
 
-### Pendiente
+### Cámara, radio y canales SMD
 
-- 🔴 **PRIORITARIO — Preview de cámara con color incorrecto.** No es
-  cosmético: al apuntar a personas, la piel sale con un tono azulado/pálido
-  (efecto "Avatar") — rompe el caso de uso más común de la cámara, aunque
-  la foto final guardada sea correcta. **Confirmado también con el kernel
-  stock genuino de LG** (mismo `/system` nuestro, boot.img híbrido usado
-  para el A/B de `chargerlogo` el 2026-07-17): apuntando a un objeto azul,
-  el preview lo muestra naranja — el bug persiste igual con el kernel 100%
-  original, confirmando que es autocontenido en el blob `libcamera.so`
-  (canales Cb/Cr invertidos, ver más abajo) y no algo introducido por
-  `kernel-c660-src` ni por ningún cambio nuestro. Sigue sin fix confirmado, pero
-  **queda una vía real sin probar**: parchar directamente el binario del
-  blob (`libcamera.so`, con Ghidra/IDA) en la función interna que hace la
-  conversión YUV→RGB para el `SurfaceView` — ya sabemos que esa conversión
-  tiene los canales Cb/Cr invertidos (ver abajo) y que es un problema
-  autocontenido dentro del blob, no del framework ni del kernel. Es la
-  única vía que no se intentó todavía. Investigación previa (por si se
-  retoma):
-  - La foto capturada (JPEG real) sale con el color correcto; el bug es
-    exclusivo del preview en pantalla. Causa raíz completa:
-  - El SurfaceView del preview llega a SurfaceFlinger ya en RGBA — la
-    conversión YUV→RGB la hace el blob (`libcamera.so`) internamente, no
-    nuestro código, y esa conversión interna tiene los canales Cb/Cr
-    invertidos.
+- **Preview de cámara con Cb/Cr invertidos (RESUELTO 2026-10-04).** El
+  JPEG ya salía bien. El preview que llega a `CameraService` sigue siendo
+  YUV420SP (`w*h*3/2`), posteado como `HAL_PIXEL_FORMAT_YCrCb_420_SP`, con
+  los pares de croma al revés: el azul se ve naranja. No hay una conversión
+  YUV→RGB dentro de `libcamera.so`; `runPreviewThread` solo entrega
+  `CAMERA_MSG_PREVIEW_FRAME`. El mismo `libcamera.so` (md5 idéntico al
+  stock) se ve bien en la ROM de LG porque `com.lge.camera` y el framework
+  LG le piden el buffer de otra forma. La app stock en CM7 hace
+  `SIGSEGV`/`dlfree` (odex contra el framework LG) y se descartó
+  des-odexearla.
+  El arreglo es solo del C660: `BOARD_CAMERA_PREVIEW_SWAP_CHROMA` en
+  `BoardConfig.mk`. `libcameraservice/Android.mk` pasa
+  `-DCAMERA_PREVIEW_SWAP_CHROMA` y `Client::handlePreviewData` intercambia
+  cada par de bytes del plano de croma (offset `w*h`, largo `w*h/2`) antes
+  de `postBuffer`. El JPEG no se toca. El Y210 no define el flag.
+  Confirmado en el equipo: el azul se ve azul, y un vídeo grabado (usa el
+  mismo heap de preview) también. En el teléfono,
+  `/system/lib/libcameraservice.so` es el binario nuevo (55092 bytes,
+  2026-10-05). El zip `cm-7.2.0-c660.zip` de la SD es anterior y no lo trae.
+  Caminos cerrados, no retomar:
+  - **Confirmado también con el kernel stock genuino de LG** (mismo
+    `/system`, boot.img híbrido del A/B de `chargerlogo` el 2026-07-17):
+    el azul sigue naranja. No es `kernel-c660-src`.
   - El blob soporta el overlay de hardware (MDP), el camino correcto de
     Qualcomm para esto (`useOverlay()`/`setOverlay()` en su vtable), pero
     `useOverlay()` devuelve `false` hardcodeado (confirmado con un log de
@@ -270,12 +297,17 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
     asumiendo que coincide con otro device tree por los nombres de función
     "core"). Los ioctls base del kernel sí coinciden entre versiones CAF
     (ver más abajo), así que esa parte de la investigación de hoy sigue
-    siendo válida.
-- **SIM / red móvil sin probar** (dejado para el final a propósito): no se
-  confirmó llamadas, SMS ni datos móviles reales — falta insertar SIM y no se
-  sabe si el equipo está liberado (unlocked) o con lock de operador. `rild`
-  sí habla con el modem real (RSSI, celdas WCDMA), pero eso no confirma que
-  una SIM de otro operador vaya a ser aceptada.
+    siendo válida. El swap de croma de Gingerbread no se porta solo: ICS
+    ya no pasa el preview por ese `postBuffer`.
+- **SIM / bloqueo de red (PH-NET), dejado para el final.** Probado con SIM
+  Claro Perú (MCC 71610): UMTS limitado, voz denegada, operador vacío,
+  `gsm.sim.state=UNKNOWN` (no es PIN ni PUK). El lock no es Claro; en un
+  C660 de Perú lo probable es Movistar o Entel. OSIPTEL "limpio" solo dice
+  que el IMEI no está reportado robado. IMEI `359543040892644`, SVN `00`.
+  No adivinar el NCK. Un KDZ Telcel (México) no lo libera y no se usan sus
+  blobs. Detalle en la nota del 2026-10-04. `rild` sí habla con el módem
+  (RSSI, celdas WCDMA) por `/dev/smd0`. Llamadas, SMS, datos y NITZ siguen
+  sin probarse con la SIM del operador del lock.
 - **Canales SMD de datos extra fallan al abrir** (dejado para el final a
   propósito):
   ```
@@ -299,30 +331,49 @@ Bugs del script oficial encontrados al extraer contra un equipo real:
   `shutdown_reboot_actions`). El C660 no tiene modo bootloader accesible desde
   ahí, igual que se hizo para `device/huawei/y210`.
 
-## Estado funcional (validado en LG-C660h real, jul-2026)
+## Estado funcional (LG-C660h, 2026-10-04)
+
+En marcha: `CyanogenMod-7.2.0-c660`, `ro.build.type=user`, kernel
+`2.6.35.10-cyanogenmod #10 PREEMPT Mon Oct 5 01:09:55 UTC 2026`.
 
 | Función | Estado | Nota |
 | --- | --- | --- |
-| Arranque / launcher | Funciona | Boot limpio tras flasheo, llega a launcher sin crashes de `zygote`/`system_server`/`mediaserver`. |
-| Gráficos (SurfaceFlinger) | Funciona | Compositing real confirmado (`dumpsys SurfaceFlinger` con capas de wallpaper/launcher/statusbar). |
-| WiFi | Funciona | Driver `ok`, interfaz `wlan0`, MAC real detectada. Falta probar asociación a red. |
-| Bluetooth | Funciona | `hci0` UP RUNNING, BlueZ registrando `hfag`/`hsag`/`opush`/`map`/`pbap`. |
-| RIL / baseband | Funciona (parcial) | `rild` habla con el modem real por `/dev/smd0`, recibe RSSI/celdas. **Sin probar con SIM real** — no se sabe si el equipo está liberado. |
-| Sensores | Funciona | Acelerómetro y magnetómetro con datos reales confirmados (girando el equipo, valores en vivo). |
-| Cámara | Funciona | Preview y uso confirmado con blobs reales (`libqcamera`). |
-| Video | Funciona | Confirmado por el usuario en equipo real. |
+| Arranque / launcher | Funciona | Imagen ~23 s, launcher ~30 s, CPU en performance a 800 MHz. No es un cuelgue. No cambiar el governor. |
+| Gráficos (SurfaceFlinger) | Funciona | Compositing real. El cursor `ANDROID_` ya no vuelve (kernel #10). |
+| Encendido de pantalla | Dejado así | ~410 ms: cada wake hace reset GPIO + `do_ilitek_init` (Sleep Out 0x11 + 120 ms) porque `disp_off` corta reset y EBI2. No saltar el init: riesgo de panel en negro. |
+| WiFi | Funciona | Asociación y DHCP confirmados (red DEPA2). |
+| Bluetooth | Funciona | Scan ve equipos. El `StopDiscovery: Invalid discovery session` quedó resuelto; dos scans seguidos arrancan y terminan. |
+| RIL / baseband | Parcial | El módem responde. La SIM Claro no registra: bloqueo PH-NET. Llamadas, SMS y datos pendientes de la SIM del lock. |
+| Reloj | Pendiente con la SIM | El módem entrega 2026-04-15 por `GET_JULIAN`. Sin NITZ no hay otra hora. No es un bug de kernel. |
+| Sensores | Funciona | Acelerómetro y magnetómetro con datos reales. |
+| Cámara | Funciona | Preview con croma corregida. El azul se ve azul. |
+| Video | Funciona | Grabación con color correcto, confirmada por el usuario. |
 | FM Radio | Funciona | Audio confirmado. |
-| Galería 3D | Funciona | Confirmado por el usuario en equipo real. |
-| Teclado físico QWERTY | Funciona | Requirió kernel propio (ver sección Kernel); eventos de tecla reales confirmados con `getevent`. |
+| Galería 3D | Funciona | Confirmado por el usuario. |
+| Teclado físico QWERTY | Funciona | Kernel propio + descarte de tecla fantasma en `kbd_pp2106`. |
+| Chargerlogo | Funciona | Sin parpadeo. Hacen falta el governor performance y `CONFIG_FRAMEBUFFER_CONSOLE`. |
+| GPS | Sin confirmar | Una sesión de QApp: `loc_eng_data_conn_failed`, fix 0,0. Hace falta datos móviles para saber si es el chip. |
+| Canales SMD extra | Ruido de módem | `DATA8/9/12/13/14_CNTL` abren `-19`. `DATA5/6/7` funcionan. No se arregla desde la ROM. |
+| `install-recovery.sh` | No es un bug | El zip no lo trae y el `set_perm` del recovery falla. El arranque sigue. Solo reinstalaría CWM en cada boot. |
 
 ## Instalación
 
 CWM 5.0.2.7 (`recovery-clockwork-5.0.2.7-c660.img`) flasheado vía `flash_image`
-desde `adb shell` (root). Ese build de CWM **no soporta** `adb sideload` ni el
-`/cache/recovery/command` estándar sin el prefijo `boot-recovery` como primera
-línea, y su `extendedcommand` exige firma de ROM Manager (falla con
-`SD Card marker not found` si se escribe a mano). Instalar el zip navegando el
-menú físico de CWM (`install zip from sdcard`) es el método que funcionó.
+desde `adb shell` (root). No hay fastboot ni `adb sideload`.
+`extendedcommand` exige firma de ROM Manager y falla con
+`SD Card marker not found` si se escribe a mano.
+
+`/cache/recovery/command` sí instala un zip, con una sola línea y sin
+`boot-recovery` delante (`get_args` trata cada línea como un argumento):
+
+```bash
+adb shell 'echo --update_package=/sdcard/cm-7.2.0-c660.zip > /cache/recovery/command'
+adb reboot recovery
+```
+
+La comprobación de firma sigue activa en esa vía. El menú físico
+(`install zip from sdcard`) también funciona. Botones: recovery
+**Vol− + Home + Power**; download **Vol+ + Atrás + Power**.
 
 ### Entrar a modo recovery
 
@@ -342,3 +393,86 @@ Power** hasta que arranque.
 Modo propietario de LG para flasheo (equivalente a Odin en Samsung), no es
 fastboot. Por botones físicos, con el equipo apagado: mantener **Volumen (+) +
 Atrás (Back) + Power** hasta que arranque.
+
+## Nota 2026-10-04 — SIM, reloj, ROM Telcel
+
+El equipo estaba en CyanogenMod-7.2.0-c660. Se hizo factory-reset de `/data`
+y se insertó una SIM Claro Perú.
+
+Radio: servicio UMTS limitado, registro de voz denegado, operador vacío, sin
+MCC 71610. `gsm.sim.state` se quedó en `UNKNOWN`. El log mostró la SIM GSM
+trabada en personalización de red (PH-NET). No es PIN ni PUK de la SIM. El
+teléfono está bloqueado a operador, y el lock no es Claro (una SIM Claro
+habría registrado si lo fuera). En un C660 de 2011 en Perú, el lock que queda
+como probable es Movistar o Entel. SIM, NITZ, llamadas, SMS y datos quedan
+pendientes hasta tener una SIM del operador del lock. No intentar códigos de
+liberación.
+
+IMEI `359543040892644`. Revisado en OSIPTEL: limpio (no robado). El SVN se
+muestra como `00` junto al IMEI; no forma parte del IMEI.
+
+Reloj: no es un bug de kernel. `hctosys` copia el `GET_JULIAN` del módem. Este
+baseband devuelve 2026-04-15. El Y210 usa el mismo camino y obtuvo un TOD
+correcto. NITZ no llegó. Cambiar la zona horaria solo mueve lo que se muestra.
+Queda pendiente junto con la SIM.
+
+Después se flasheó un stock Telcel (México): no había KDZ de Perú. No es el
+nandroid de julio ni el V10a de Perú del que salieron los blobs. Tras ese
+flasheo, `*#06#` sigue mostrando el mismo IMEI más SVN `00`.
+
+Los blobs de `vendor/lge/c660` ya se extrajeron de la unidad Perú V10a. No
+re-extraer ni reemplazar esos blobs desde el ROM Telcel. No mezclar librerías
+Telcel en este árbol. Reinstalar el zip CM7 que ya existe no necesita un pull
+nuevo del system Telcel: `out/target/product/c660/cm-7.2.0-c660.zip` y los
+blobs de Perú ya están en el árbol.
+
+Leído por adb (solo lectura, sin reboot), sistema en marcha:
+
+- `ro.product.model` = `LG-C660h`
+- `ro.build.fingerprint` = `LGE/lge_muscat/muscat:2.3.4/GRJ22/V10a-Aug-23-2011.2ED2FC1835:user/release-keys`
+- `ro.build.description` = `muscat-user 2.3.4 GRJ22 V10a-Aug-23-2011.2ED2FC1835 release-keys`
+- `gsm.version.baseband` = `V07u-000-000-MAR-23-2009`
+- `ro.product.device` = `muscat`
+
+Esa lectura fue con el stock Telcel todavía arrancado. El fingerprint repite
+el string del V10a Perú, pero `ro.product.locale.region` = `MX` y en
+`/system/app` estaban `TelcelUrl.apk` y `TN55-Telcel-1002.apk`. Después el
+usuario reinstaló CM7. CWM 5.0.2.7 sobrevivió: el zip se instaló y el equipo
+volvió a `CyanogenMod-7.2.0-c660`.
+
+## Qué hay en el equipo y qué no trae el zip
+
+`/sdcard/cm-7.2.0-c660.zip` (85271855 bytes, 2026-10-04 00:53) es el paquete
+7.2.0 de ese día: `ro.modversion=CyanogenMod-7.2.0-c660`, `ro.build.type=user`,
+sin `checkjni`. Volver a flashearlo pisa tres arreglos que se empujaron
+después y que el zip no contiene:
+
+- `kernel` #10, sin el cursor `ANDROID_` (`device/lge/c660/kernel`; el
+  anterior está en `kernel.bak-fbcon`).
+- `/system/lib/libcameraservice.so` con el swap de croma del preview.
+- `/system/framework/framework.jar` con el parche de Bluetooth
+  (`patches/frameworks_base_bluetooth.patch`). En el equipo pesa 3115137
+  bytes. No hay `framework.odex`; zygote lo tomó tras el reboot y el caché
+  Dalvik se regeneró. Dos scans seguidos (00:45 y 00:47, reloj del módem)
+  vieron equipos y terminaron sin `Invalid discovery session`.
+
+Esos tres cambios sí están en el árbol de fuentes. Un `bacon` nuevo los
+metería en el zip. Hasta entonces, no reinstalar el zip de la SD si se
+quiere conservar preview, cursor y Bluetooth.
+
+`install-recovery.sh` no está en `/system/bin`. El `set_perm` que falla en
+el recovery no es un bug.
+
+## Qué no se toca
+
+- No acortar el wake del panel Ilitek saltándose `do_ilitek_init`.
+- No apagar `CONFIG_FRAMEBUFFER_CONSOLE` ni cambiar el governor performance.
+- No escribir la hora con `SET_JULIAN` hasta que se pida. Un binario
+  `setrtc` llegó a `/data/local/tmp`, salió por falta de argumentos y no
+  llamó al módem. El factory reset lo borró.
+- No mezclar blobs Telcel en `vendor/lge/c660`.
+- No adivinar el NCK del bloqueo de red.
+- El arreglo de Bluetooth vive en `frameworks/base` (compartido con el
+  Y210) y la copia para reaplicar está en
+  `device/lge/c660/patches/`. No correr `apply-patches.sh` sobre el árbol
+  actual: el parche ya está aplicado.

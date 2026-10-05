@@ -1,0 +1,92 @@
+diff --git a/init/logo.c b/init/logo.c
+index 614224c46..4e94e3b0b 100644
+--- a/init/logo.c
++++ b/init/logo.c
+@@ -49,7 +49,23 @@ struct FB {
+ 
+ #define fb_width(fb) ((fb)->vi.xres)
+ #define fb_height(fb) ((fb)->vi.yres)
+-#define fb_size(fb) ((fb)->vi.xres * (fb)->vi.yres * 2)
++
++/* Visible width can be shorter than the hardware stride. The C660 fb is
++ * 240 pixels wide with line_length 512 (256 pixels). Packing rows back to
++ * back shears the image.
++ */
++static unsigned fb_stride_px(struct FB *fb)
++{
++    unsigned stride = fb->fi.line_length / 2;
++    if (stride < fb_width(fb))
++        stride = fb_width(fb);
++    return stride;
++}
++
++static unsigned fb_map_bytes(struct FB *fb)
++{
++    return fb_stride_px(fb) * fb_height(fb) * 2;
++}
+ 
+ static int fb_open(struct FB *fb)
+ {
+@@ -62,7 +78,7 @@ static int fb_open(struct FB *fb)
+     if (ioctl(fb->fd, FBIOGET_VSCREENINFO, &fb->vi) < 0)
+         goto fail;
+ 
+-    fb->bits = mmap(0, fb_size(fb), PROT_READ | PROT_WRITE, 
++    fb->bits = mmap(0, fb_map_bytes(fb), PROT_READ | PROT_WRITE,
+                     MAP_SHARED, fb->fd, 0);
+     if (fb->bits == MAP_FAILED)
+         goto fail;
+@@ -76,7 +92,7 @@ fail:
+ 
+ static void fb_close(struct FB *fb)
+ {
+-    munmap(fb->bits, fb_size(fb));
++    munmap(fb->bits, fb_map_bytes(fb));
+     close(fb->fd);
+ }
+ 
+@@ -106,8 +122,8 @@ int load_565rle_image(char *fn)
+ {
+     struct FB fb;
+     struct stat s;
+-    unsigned short *data, *bits, *ptr;
+-    unsigned count, max;
++    unsigned short *data, *ptr;
++    unsigned count, max, pos, width, stride;
+     int fd;
+ 
+     if (vt_set_mode(1)) 
+@@ -130,17 +146,28 @@ int load_565rle_image(char *fn)
+     if (fb_open(&fb))
+         goto fail_unmap_data;
+ 
+-    max = fb_width(&fb) * fb_height(&fb);
++    width = fb_width(&fb);
++    stride = fb_stride_px(&fb);
++    max = width * fb_height(&fb);
++    pos = 0;
+     ptr = data;
+     count = s.st_size;
+-    bits = fb.bits;
+     while (count > 3) {
+         unsigned n = ptr[0];
++        unsigned short color;
+         if (n > max)
+             break;
+-        android_memset16(bits, ptr[1], n << 1);
+-        bits += n;
+-        max -= n;
++        color = ptr[1];
++        while (n) {
++            unsigned x = pos % width;
++            unsigned y = pos / width;
++            unsigned room = width - x;
++            unsigned chunk = n < room ? n : room;
++            android_memset16(fb.bits + y * stride + x, color, chunk << 1);
++            pos += chunk;
++            n -= chunk;
++            max -= chunk;
++        }
+         ptr += 2;
+         count -= 4;
+     }
