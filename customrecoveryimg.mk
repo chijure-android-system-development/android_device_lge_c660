@@ -27,6 +27,22 @@ $(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTIMG) \
 	@echo -e ${PRT_IMG}"----- Installing mksh as /sbin/sh (busybox is too big to keep) ------"${CL_RST}
 	$(hide) cp device/lge/c660/prebuilt/mksh $(TARGET_RECOVERY_ROOT_OUT)/sbin/sh
 	$(hide) chmod 755 $(TARGET_RECOVERY_ROOT_OUT)/sbin/sh
+	@echo -e ${PRT_IMG}"----- Gingerbread adbd (this 2.6.35 kernel has legacy /dev/android_adb, no FunctionFS) ------"${CL_RST}
+	$(hide) cp device/lge/c660/prebuilt/adbd $(TARGET_RECOVERY_ROOT_OUT)/sbin/adbd
+	$(hide) chmod 755 $(TARGET_RECOVERY_ROOT_OUT)/sbin/adbd
+	$(hide) sed -i 's|^service adbd /sbin/adbd .*|service adbd /sbin/adbd recovery|' $(TARGET_RECOVERY_ROOT_OUT)/init.rc
+	$(hide) mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/system/bin
+	$(hide) ln -sf /sbin/sh $(TARGET_RECOVERY_ROOT_OUT)/system/bin/sh
+	@echo -e ${PRT_IMG}"----- Dropping bu, fat tools, pigz, libusbhost and the mono font to fit the 5 MB partition ------"${CL_RST}
+	$(hide) rm -f $(TARGET_RECOVERY_ROOT_OUT)/sbin/bu \
+		$(TARGET_RECOVERY_ROOT_OUT)/sbin/fsck.fat \
+		$(TARGET_RECOVERY_ROOT_OUT)/sbin/mkfs.fat \
+		$(TARGET_RECOVERY_ROOT_OUT)/sbin/fatlabel \
+		$(TARGET_RECOVERY_ROOT_OUT)/sbin/pigz \
+		$(TARGET_RECOVERY_ROOT_OUT)/sbin/unpigz \
+		$(TARGET_RECOVERY_ROOT_OUT)/sbin/libusbhost.so \
+		$(TARGET_RECOVERY_ROOT_OUT)$(TWRES_PATH)fonts/DroidSansMono.ttf
+	$(hide) sed -i 's|filename="DroidSansMono.ttf"|filename="RobotoCondensed-Regular.ttf"|' $(TARGET_RECOVERY_ROOT_OUT)$(TWRES_PATH)ui.xml
 	$(hide) $(MKBOOTFS) $(TARGET_RECOVERY_ROOT_OUT) > $(recovery_uncompressed_ramdisk)
 	@echo -e ${PRT_IMG}"----- Compressing recovery ramdisk with gzip ------"${CL_RST}
 	$(MINIGZIP) < $(recovery_uncompressed_ramdisk) > $(recovery_ramdisk)
