@@ -1,0 +1,9 @@
+
+# LG's bootloader leaves a flag in misc when it boots recovery; CWM cleared it on exit
+# through MTD, TWRP cannot write the BCB here, so the next reboot would loop into recovery.
+service clearmisc /sbin/erase_image misc
+    disabled
+    oneshot
+
+on boot
+    start clearmisc

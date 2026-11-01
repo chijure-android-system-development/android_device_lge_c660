@@ -31,6 +31,7 @@ $(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTIMG) \
 	$(hide) cp device/lge/c660/prebuilt/adbd $(TARGET_RECOVERY_ROOT_OUT)/sbin/adbd
 	$(hide) chmod 755 $(TARGET_RECOVERY_ROOT_OUT)/sbin/adbd
 	$(hide) sed -i 's|^service adbd /sbin/adbd .*|service adbd /sbin/adbd recovery|' $(TARGET_RECOVERY_ROOT_OUT)/init.rc
+	$(hide) cat device/lge/c660/prebuilt/init.clearmisc.rc >> $(TARGET_RECOVERY_ROOT_OUT)/init.rc
 	$(hide) mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/system/bin
 	$(hide) ln -sf /sbin/sh $(TARGET_RECOVERY_ROOT_OUT)/system/bin/sh
 	@echo -e ${PRT_IMG}"----- Dropping bu, fat tools, pigz, libusbhost and the mono font to fit the 5 MB partition ------"${CL_RST}
