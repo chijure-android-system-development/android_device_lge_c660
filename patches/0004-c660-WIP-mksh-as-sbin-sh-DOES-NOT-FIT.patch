@@ -1,0 +1,17 @@
+--- a/device/lge/c660/customrecoveryimg.mk
++++ b/device/lge/c660/customrecoveryimg.mk
+@@ -20,9 +20,13 @@
+ 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/libext2*.so
+ 	$(hide) rm -rf $(TARGET_RECOVERY_ROOT_OUT)$(TWRES_PATH)/languages
+ 	$(hide) find $(TARGET_RECOVERY_ROOT_OUT)/sbin -type l | while read link; do \
+-		if [ "$$(readlink "$$link")" = "busybox" ]; then rm -f "$$link"; fi; \
++		target=$$(readlink "$$link"); \
++		if [ "$$target" = "busybox" ] || [ "$$target" = "/sbin/busybox" ]; then rm -f "$$link"; fi; \
+ 	done
+ 	$(hide) rm -f $(TARGET_RECOVERY_ROOT_OUT)/sbin/busybox
++	@echo -e ${PRT_IMG}"----- Installing mksh as /sbin/sh (busybox is too big to keep) ------"${CL_RST}
++	$(hide) cp device/lge/c660/prebuilt/mksh $(TARGET_RECOVERY_ROOT_OUT)/sbin/sh
++	$(hide) chmod 755 $(TARGET_RECOVERY_ROOT_OUT)/sbin/sh
+ 	$(hide) $(MKBOOTFS) $(TARGET_RECOVERY_ROOT_OUT) > $(recovery_uncompressed_ramdisk)
+ 	@echo -e ${PRT_IMG}"----- Compressing recovery ramdisk with gzip ------"${CL_RST}
+ 	$(MINIGZIP) < $(recovery_uncompressed_ramdisk) > $(recovery_ramdisk)

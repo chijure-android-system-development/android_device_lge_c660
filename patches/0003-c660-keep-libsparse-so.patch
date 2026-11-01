@@ -1,0 +1,12 @@
+--- a/device/lge/c660/customrecoveryimg.mk
++++ b/device/lge/c660/customrecoveryimg.mk
+@@ -17,8 +17,7 @@
+ 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/sgdisk \
+ 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/simg2img \
+ 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/tune2fs \
+-		$(TARGET_RECOVERY_ROOT_OUT)/sbin/libext2*.so \
+-		$(TARGET_RECOVERY_ROOT_OUT)/sbin/libsparse.so
++		$(TARGET_RECOVERY_ROOT_OUT)/sbin/libext2*.so
+ 	$(hide) rm -rf $(TARGET_RECOVERY_ROOT_OUT)$(TWRES_PATH)/languages
+ 	$(hide) find $(TARGET_RECOVERY_ROOT_OUT)/sbin -type l | while read link; do \
+ 		if [ "$$(readlink "$$link")" = "busybox" ]; then rm -f "$$link"; fi; \

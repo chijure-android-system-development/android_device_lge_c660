@@ -1,0 +1,21 @@
+--- a/bionic/libc/private/bionic_tls.h
++++ b/bionic/libc/private/bionic_tls.h
+@@ -88,10 +88,15 @@
+ 
+ /* get the TLS */
+ #if defined(__arm__)
++/* Plain ARMv6 cores (e.g. ARM1136, non-K) lack the CP15 c13 TLS register that
++ * "mrc p15, 0, %0, c13, c0, 3" reads, and some vendor kernels (e.g. this LG
++ * MSM7227T/muscat kernel) don't trap-and-emulate it, silently returning
++ * garbage instead of the value set via the set_tls syscall. The kuser helper
++ * page at a fixed kernel-mapped address is the portable read path: it works
++ * whether or not the CPU has real hardware TLS register support.
++ */
+ # define __get_tls() \
+-    ({ register unsigned int __val; \
+-       asm ("mrc p15, 0, %0, c13, c0, 3" : "=r"(__val)); \
+-       (volatile void*) __val; })
++    (((void* (*)(void))0xffff0fe0)())
+ #elif defined(__mips__)
+ # define __get_tls() \
+     /* On mips32r1, this goes via a kernel illegal instruction trap that's optimized for v1. */ \

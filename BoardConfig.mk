@@ -1,73 +1,68 @@
-USE_CAMERA_STUB := true
-
-# inherit from the proprietary version
--include vendor/lge/c660/BoardConfigVendor.mk
-
-BOARD_USES_QCOM_HARDWARE := true
-BOARD_USES_QCOM_LIBS := true
-BOARD_USES_QCOM_LIBRPC := true
-
+# ---- SoC / CPU ----
 TARGET_NO_BOOTLOADER := true
 TARGET_BOARD_PLATFORM := msm7k
-TARGET_CPU_ABI := armeabi
+TARGET_ARCH := arm
 TARGET_ARCH_VARIANT := armv6-vfp
-TARGET_BOARD_PLATFORM := msm7k
+TARGET_CPU_VARIANT := generic
 TARGET_CPU_ABI := armeabi
 TARGET_BOOTLOADER_BOARD_NAME := c660
+BOARD_VENDOR := lge
+TARGET_ARCH_LOWMEM := true
+FORCE_ARM_DEBUGGING := true
 
 TARGET_BOARD_PLATFORM_GPU := qcom-adreno200
+
+# ---- Kernel prebuilt + boot image header ----
+TARGET_PREBUILT_KERNEL := device/lge/c660/kernel-stock-recovery
 
 BOARD_KERNEL_CMDLINE := mem=215M console=ttyMSM2,115200n8 androidboot.hardware=muscat
 BOARD_KERNEL_BASE := 0x02800000
 BOARD_KERNEL_PAGESIZE := 2048
 
-# fix this up by examining /proc/mtd on a running device
+# ---- Partition sizes from /proc/mtd on LG-C660h ----
+TARGET_USERIMAGES_USE_EXT4 := false
+TARGET_USERIMAGES_USE_UBIFS := false
+BOARD_USE_MTDUTILS := true
 BOARD_BOOTIMAGE_PARTITION_SIZE := 0x00440000
 BOARD_RECOVERYIMAGE_PARTITION_SIZE := 0x00500000
 BOARD_SYSTEMIMAGE_PARTITION_SIZE := 0x0cd00000
 BOARD_USERDATAIMAGE_PARTITION_SIZE := 0x0b280000
 BOARD_FLASH_BLOCK_SIZE := 131072
+BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := yaffs2
+BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := yaffs2
+BOARD_CACHEIMAGE_FILE_SYSTEM_TYPE := yaffs2
 
-TARGET_PREBUILT_KERNEL := device/lge/c660/kernel
-
-
+# ---- Recovery ----
 BOARD_HAS_NO_SELECT_BUTTON := true
 BOARD_LDPI_RECOVERY := true
 BOARD_HAS_JANKY_BACKBUFFER := true
-BOARD_CUSTOM_GRAPHICS           := ../../../device/lge/c660/recovery/graphics.c
+TARGET_RECOVERY_FSTAB := device/lge/c660/recovery.fstab
+ifeq ($(TARGET_BUILD_VARIANT), eng)
+  BOARD_CUSTOM_BOOTIMG_MK := device/lge/c660/customrecoveryimg.mk
+endif
 
-TARGET_PROVIDES_LIBAUDIO := true
-TARGET_PROVIDES_LIBRIL := true
+TW_THEME := watch_mdpi
+TARGET_RECOVERY_PIXEL_FORMAT := "RGB_565"
+TARGET_RECOVERY_FORCE_PIXEL_FORMAT := "RGB_565"
+RECOVERY_GRAPHICS_FORCE_USE_LINELENGTH := true
 
-BOARD_HAVE_BLUETOOTH := true
-BOARD_HAVE_BLUETOOTH_BCM := true
+TW_INTERNAL_STORAGE_PATH := "/sdcard"
+TW_INTERNAL_STORAGE_MOUNT_POINT := "sdcard"
+TW_EXTERNAL_STORAGE_PATH := "/sdcard"
+TW_EXTERNAL_STORAGE_MOUNT_POINT := "sdcard"
+TW_NO_EXFAT := true
+TW_INCLUDE_CRYPTO := false
+TW_EXCLUDE_ENCRYPTED_BACKUPS := true
+TW_EXCLUDE_MTP := true
+TW_EXCLUDE_SUPERSU := true
+TW_NO_REBOOT_BOOTLOADER := true
+TW_NO_CPU_TEMP := true
+TW_DEVICE_VERSION := 0.1
 
-BOARD_FM_DEVICE := bcm4329
-BOARD_HAVE_FM_RADIO := true
-BOARD_GLOBAL_CFLAGS += -DHAVE_FM_RADIO
+TW_BRIGHTNESS_PATH := "/sys/class/leds/lcd-backlight/brightness"
+TW_SECONDARY_BRIGHTNESS_PATH := "/sys/class/leds/button-backlight/brightness"
+TW_MAX_BRIGHTNESS := 255
+TW_DEFAULT_BRIGHTNESS := 80
 
-# to enable the GPS HAL
-BOARD_USES_QCOM_GPS := true
-BOARD_VENDOR_QCOM_GPS_LOC_API_HARDWARE := c660
-# AMSS version to use for GPS
-BOARD_VENDOR_QCOM_GPS_LOC_API_AMSS_VERSION := 50000
-
-BOARD_EGL_CFG := device/lge/c660/configs/egl.cfg
-
-TARGET_SPECIFIC_HEADER_PATH := device/lge/c660/include
-TARGET_LIBAGL_USE_GRALLOC_COPYBITS := true
-BOARD_CAMERA_USE_GETBUFFERINFO := true
-BOARD_USE_CAF_LIBCAMERA := true
-
-BOARD_WLAN_DEVICE := bcm4329
-WIFI_DRIVER_FW_STA_PATH         := "/system/etc/wl/rtecdc.bin"
-WIFI_DRIVER_FW_AP_PATH          := "/system/etc/wl/rtecdc-apsta.bin"
-WIFI_DRIVER_MODULE_NAME         := "wireless"
-WIFI_DRIVER_MODULE_PATH         := "/system/lib/modules/wireless.ko"
-WIFI_DRIVER_MODULE_ARG          := "firmware_path=/etc/wl/rtecdc.bin nvram_path=/etc/wl/nvram.txt config_path=/data/misc/wifi/config"
-WPA_SUPPLICANT_VERSION          := VER_0_6_X
-WIFI_DRIVER_HAS_LGE_SOFTAP      := true
-BOARD_WEXT_NO_COMBO_SCAN	:= true
-BOARD_WPA_SUPPLICANT_DRIVER := WEXT
-
-BOARD_GLOBAL_CFLAGS += -DCHARGERMODE_CMDLINE_NAME='"lge.reboot"' -DCHARGERMODE_CMDLINE_VALUE='"pwroff"'
+BOARD_HAS_LARGE_FILESYSTEM := true
+BOARD_VOLD_MAX_PARTITIONS := 12

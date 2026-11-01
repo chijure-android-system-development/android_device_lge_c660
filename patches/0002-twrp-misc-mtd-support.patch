@@ -1,0 +1,15 @@
+--- a/bootable/recovery/twrp.cpp
++++ b/bootable/recovery/twrp.cpp
+@@ -175,10 +175,10 @@
+ 	{
+ 		TWPartition* misc = PartitionManager.Find_Partition_By_Path("/misc");
+ 		if (misc != NULL) {
+-			if (misc->Current_File_System == "emmc") {
++			if (misc->Current_File_System == "emmc" || misc->Current_File_System == "mtd") {
+ 				set_misc_device(misc->Actual_Block_Device);
+ 			} else {
+-				LOGERR("Only emmc /misc is supported\n");
++				LOGERR("Only emmc or mtd /misc is supported\n");
+ 			}
+ 		}
+ 		get_args(&argc, &argv);
