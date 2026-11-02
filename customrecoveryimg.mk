@@ -33,14 +33,8 @@ $(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTIMG) \
 	$(hide) cat device/lge/c660/prebuilt/init.clearmisc.rc >> $(TARGET_RECOVERY_ROOT_OUT)/init.rc
 	$(hide) mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/system/bin
 	$(hide) ln -sf /sbin/sh $(TARGET_RECOVERY_ROOT_OUT)/system/bin/sh
-	@echo -e ${PRT_IMG}"----- Dropping bu, fat tools, pigz and libusbhost to fit the 5 MB partition ------"${CL_RST}
-	$(hide) rm -f $(TARGET_RECOVERY_ROOT_OUT)/sbin/bu \
-		$(TARGET_RECOVERY_ROOT_OUT)/sbin/fsck.fat \
-		$(TARGET_RECOVERY_ROOT_OUT)/sbin/mkfs.fat \
-		$(TARGET_RECOVERY_ROOT_OUT)/sbin/fatlabel \
-		$(TARGET_RECOVERY_ROOT_OUT)/sbin/pigz \
-		$(TARGET_RECOVERY_ROOT_OUT)/sbin/unpigz \
-		$(TARGET_RECOVERY_ROOT_OUT)/sbin/libusbhost.so
+	@echo -e ${PRT_IMG}"----- Dropping libusbhost (MTP is excluded) ------"${CL_RST}
+	$(hide) rm -f $(TARGET_RECOVERY_ROOT_OUT)/sbin/libusbhost.so
 	@echo -e ${PRT_IMG}"----- Title bar: right-align the clock and shorten the battery label so 'by <author>' fits ------"${CL_RST}
 	$(hide) sed -i 's|<placement x="%center_x%" y="%row1_header_y%" placement="5"/>|<placement x="256" y="%row1_header_y%" placement="1"/>|' $(TARGET_RECOVERY_ROOT_OUT)$(TWRES_PATH)ui.xml
 	$(hide) sed -i 's|>Battery: %tw_battery%<|>Bat: %tw_battery%<|' $(TARGET_RECOVERY_ROOT_OUT)$(TWRES_PATH)languages/en.xml
