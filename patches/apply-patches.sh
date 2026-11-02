@@ -25,3 +25,8 @@ apply frameworks/base frameworks_base_bluetooth.patch
 # system/core — initlogo: el fb del C660 es 240 px con stride 512.
 # Escribir las filas pegadas corre las letras 16 px por línea.
 apply system/core system_core_init_logo.patch
+
+# frameworks/base — telefonía: una SIM con bloqueo de red (PH-NET) llega con
+# app_state SUBSCRIPTION_PERSO; sin este caso el radio state quedaba en
+# SIM_NOT_READY y gsm.sim.state salía UNKNOWN en vez de NETWORK_LOCKED.
+apply frameworks/base frameworks_base_sim_perso.patch
