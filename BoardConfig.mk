@@ -63,6 +63,8 @@ TW_BRIGHTNESS_PATH := "/sys/class/leds/lcd-backlight/brightness"
 TW_SECONDARY_BRIGHTNESS_PATH := "/sys/class/leds/button-backlight/brightness"
 TW_MAX_BRIGHTNESS := 255
 TW_DEFAULT_BRIGHTNESS := 80
+# FBIOBLANK re-inits the ilitek LCD and the first frame after unblank is lost, leaving a stale screen
+TW_NO_SCREEN_BLANK := true
 
 BOARD_HAS_LARGE_FILESYSTEM := true
 BOARD_VOLD_MAX_PARTITIONS := 12
