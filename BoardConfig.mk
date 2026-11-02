@@ -48,8 +48,8 @@ RECOVERY_GRAPHICS_FORCE_USE_LINELENGTH := true
 
 TW_INTERNAL_STORAGE_PATH := "/sdcard"
 TW_INTERNAL_STORAGE_MOUNT_POINT := "sdcard"
-TW_EXTERNAL_STORAGE_PATH := "/sdcard"
-TW_EXTERNAL_STORAGE_MOUNT_POINT := "sdcard"
+# the C660 has no internal storage: the microSD is the only storage
+BOARD_UMS_LUNFILE := "/sys/devices/platform/usb_mass_storage/lun%d/file"
 TW_NO_EXFAT := true
 TW_INCLUDE_CRYPTO := false
 TW_EXCLUDE_ENCRYPTED_BACKUPS := true
