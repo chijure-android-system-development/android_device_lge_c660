@@ -74,6 +74,7 @@ Gingerbread `adbd` (this kernel has the legacy `/dev/android_adb`, no FunctionFS
 | `TW_NO_SCREEN_BLANK` had no effect | the flag did not reach `libminuitwrp` | `patches/0005-minuitwrp-propagate-no-screen-blank.patch` |
 | Touch looked broken ("Install" went back to Home) | trimmed ramdisk without `languages/`, not the driver | keep `languages/` and the fonts (touch panel is `touch_mcs6000`, old MT protocol, 240x320 = screen) |
 | Android build does not rebuild after changing flags | KitKat build system does not track `LOCAL_CFLAGS` | delete `obj/SHARED_LIBRARIES/libminuitwrp_intermediates` and `obj/EXECUTABLES/recovery_intermediates`, then check that `recovery.img` md5 changes |
+| `TW_BUILD_AUTHOR := chijure` overlaps the clock in the title bar | the 240 px watch theme has no room for `TWRP 3.1.1-0.1 by chijure`; `placement="5"` centres on the screen and ignores `x` | `customrecoveryimg.mk` right-aligns the clock (`placement="1"`) and shortens the English `Battery:` label to `Bat:` |
 | LUN stays bound after "Unmount" in USB storage mode | `usb_storage_disable()` writes an empty string, a 0-byte write never reaches the sysfs `store()` | `patches/0006-usb-storage-disable-write-newline.patch` |
 
 The patches under `patches/` apply to `bootable/recovery` (it is not a git checkout here, so
