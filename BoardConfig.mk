@@ -65,6 +65,8 @@ TW_MAX_BRIGHTNESS := 255
 TW_DEFAULT_BRIGHTNESS := 80
 # FBIOBLANK re-inits the ilitek LCD and the first frame after unblank is lost, leaving a stale screen
 TW_NO_SCREEN_BLANK := true
+# msm_fb only refreshes this command-mode LCD in FBIOPAN_DISPLAY, FBIOPUT_VSCREENINFO alone leaves a stale frame
+TW_FBIOPAN := true
 
 BOARD_HAS_LARGE_FILESYSTEM := true
 BOARD_VOLD_MAX_PARTITIONS := 12

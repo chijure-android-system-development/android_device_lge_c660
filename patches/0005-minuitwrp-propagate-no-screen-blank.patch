@@ -1,0 +1,22 @@
+--- a/bootable/recovery/minuitwrp/Android.mk	2026-11-01 22:42:02.658344091 -0500
++++ b/bootable/recovery/minuitwrp/Android.mk	2026-11-01 22:42:49.020456286 -0500
+@@ -84,6 +84,19 @@
+ LOCAL_CFLAGS += -DRECOVERY_GRAPHICS_FORCE_SINGLE_BUFFER
+ endif
+ 
++ifeq ($(TW_NO_SCREEN_BLANK), true)
++LOCAL_CFLAGS += -DTW_NO_SCREEN_BLANK
++ifneq ($(TW_BRIGHTNESS_PATH),)
++LOCAL_CFLAGS += -DTW_BRIGHTNESS_PATH=\"$(subst ",,$(TW_BRIGHTNESS_PATH))\"
++endif
++ifneq ($(TW_SECONDARY_BRIGHTNESS_PATH),)
++LOCAL_CFLAGS += -DTW_SECONDARY_BRIGHTNESS_PATH=\"$(subst ",,$(TW_SECONDARY_BRIGHTNESS_PATH))\"
++endif
++ifneq ($(TW_MAX_BRIGHTNESS),)
++LOCAL_CFLAGS += -DTW_MAX_BRIGHTNESS=$(TW_MAX_BRIGHTNESS)
++endif
++endif
++
+ #Remove the # from the line below to enable event logging
+ #TWRP_EVENT_LOGGING := true
+ ifeq ($(TWRP_EVENT_LOGGING), true)
