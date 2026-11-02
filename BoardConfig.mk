@@ -13,7 +13,7 @@ FORCE_ARM_DEBUGGING := true
 TARGET_BOARD_PLATFORM_GPU := qcom-adreno200
 
 # ---- Kernel prebuilt + boot image header ----
-TARGET_PREBUILT_KERNEL := device/lge/c660/kernel-stock-recovery
+TARGET_PREBUILT_KERNEL := device/lge/c660/kernel-recovery-slim
 
 BOARD_KERNEL_CMDLINE := mem=215M console=ttyMSM2,115200n8 androidboot.hardware=muscat
 BOARD_KERNEL_BASE := 0x02800000

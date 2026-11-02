@@ -18,7 +18,6 @@ $(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTIMG) \
 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/simg2img \
 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/tune2fs \
 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/libext2*.so
-	$(hide) rm -rf $(TARGET_RECOVERY_ROOT_OUT)$(TWRES_PATH)/languages
 	$(hide) find $(TARGET_RECOVERY_ROOT_OUT)/sbin -type l | while read link; do \
 		target=$$(readlink "$$link"); \
 		if [ "$$target" = "busybox" ] || [ "$$target" = "/sbin/busybox" ]; then rm -f "$$link"; fi; \
@@ -34,16 +33,14 @@ $(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTIMG) \
 	$(hide) cat device/lge/c660/prebuilt/init.clearmisc.rc >> $(TARGET_RECOVERY_ROOT_OUT)/init.rc
 	$(hide) mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/system/bin
 	$(hide) ln -sf /sbin/sh $(TARGET_RECOVERY_ROOT_OUT)/system/bin/sh
-	@echo -e ${PRT_IMG}"----- Dropping bu, fat tools, pigz, libusbhost and the mono font to fit the 5 MB partition ------"${CL_RST}
+	@echo -e ${PRT_IMG}"----- Dropping bu, fat tools, pigz and libusbhost to fit the 5 MB partition ------"${CL_RST}
 	$(hide) rm -f $(TARGET_RECOVERY_ROOT_OUT)/sbin/bu \
 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/fsck.fat \
 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/mkfs.fat \
 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/fatlabel \
 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/pigz \
 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/unpigz \
-		$(TARGET_RECOVERY_ROOT_OUT)/sbin/libusbhost.so \
-		$(TARGET_RECOVERY_ROOT_OUT)$(TWRES_PATH)fonts/DroidSansMono.ttf
-	$(hide) sed -i 's|filename="DroidSansMono.ttf"|filename="RobotoCondensed-Regular.ttf"|' $(TARGET_RECOVERY_ROOT_OUT)$(TWRES_PATH)ui.xml
+		$(TARGET_RECOVERY_ROOT_OUT)/sbin/libusbhost.so
 	$(hide) $(MKBOOTFS) $(TARGET_RECOVERY_ROOT_OUT) > $(recovery_uncompressed_ramdisk)
 	@echo -e ${PRT_IMG}"----- Compressing recovery ramdisk with gzip ------"${CL_RST}
 	$(MINIGZIP) < $(recovery_uncompressed_ramdisk) > $(recovery_ramdisk)
