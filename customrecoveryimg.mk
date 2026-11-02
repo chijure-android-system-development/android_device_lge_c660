@@ -41,8 +41,9 @@ $(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTIMG) \
 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/pigz \
 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/unpigz \
 		$(TARGET_RECOVERY_ROOT_OUT)/sbin/libusbhost.so
-	@echo -e ${PRT_IMG}"----- Moving the title bar clock right so 'by <author>' does not overlap it ------"${CL_RST}
-	$(hide) sed -i 's|<placement x="%center_x%" y="%row1_header_y%" placement="5"/>|<placement x="200" y="%row1_header_y%" placement="5"/>|' $(TARGET_RECOVERY_ROOT_OUT)$(TWRES_PATH)ui.xml
+	@echo -e ${PRT_IMG}"----- Title bar: right-align the clock and shorten the battery label so 'by <author>' fits ------"${CL_RST}
+	$(hide) sed -i 's|<placement x="%center_x%" y="%row1_header_y%" placement="5"/>|<placement x="256" y="%row1_header_y%" placement="1"/>|' $(TARGET_RECOVERY_ROOT_OUT)$(TWRES_PATH)ui.xml
+	$(hide) sed -i 's|>Battery: %tw_battery%<|>Bat: %tw_battery%<|' $(TARGET_RECOVERY_ROOT_OUT)$(TWRES_PATH)languages/en.xml
 	$(hide) $(MKBOOTFS) $(TARGET_RECOVERY_ROOT_OUT) > $(recovery_uncompressed_ramdisk)
 	@echo -e ${PRT_IMG}"----- Compressing recovery ramdisk with gzip ------"${CL_RST}
 	$(MINIGZIP) < $(recovery_uncompressed_ramdisk) > $(recovery_ramdisk)
