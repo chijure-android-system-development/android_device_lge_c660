@@ -53,7 +53,6 @@ BOARD_UMS_LUNFILE := "/sys/devices/platform/usb_mass_storage/lun%d/file"
 TW_NO_EXFAT := true
 TW_INCLUDE_CRYPTO := false
 TW_EXCLUDE_ENCRYPTED_BACKUPS := true
-TW_EXCLUDE_MTP := true
 TW_EXCLUDE_SUPERSU := true
 TW_NO_REBOOT_BOOTLOADER := true
 TW_NO_CPU_TEMP := true

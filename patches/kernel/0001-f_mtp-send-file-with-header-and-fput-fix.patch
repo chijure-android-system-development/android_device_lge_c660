@@ -1,0 +1,170 @@
+From: chijure <noreply@example.com>
+Subject: usb: f_mtp: add MTP_SEND_FILE_WITH_HEADER (AOSP ABI) and fix double fput
+
+TWRP 4.4's MtpServer uses the AOSP 4.x ABI: struct mtp_file_range with command and
+transaction_id, and MTP_SEND_FILE_WITH_HEADER. The 2.6.35 driver only had the old
+24-byte struct, so every ioctl number mismatched. mtp_send_file() now prepends the
+12-byte MTP data header and sends a ZLP on a packet boundary. mtp_thread() no longer
+fput()s the file the ioctl already holds (VFS: Close: file count is 0 per transfer).
+
+---
+--- a/include/linux/usb/f_mtp.h	2026-11-01 23:29:52.081901290 -0500
++++ b/include/linux/usb/f_mtp.h	2026-11-01 23:29:52.101391799 -0500
+@@ -29,7 +29,15 @@
+ 	/* offset in file for start of transfer */
+ 	loff_t  	offset;
+ 	/* number of bytes to transfer */
+-	size_t		length;
++	int64_t		length;
++	/* MTP command ID for data header,
++	 * used only for MTP_SEND_FILE_WITH_HEADER
++	 */
++	uint16_t	command;
++	/* MTP transaction ID for data header,
++	 * used only for MTP_SEND_FILE_WITH_HEADER
++	 */
++	uint32_t	transaction_id;
+ };
+ 
+ struct mtp_event {
+@@ -49,5 +57,9 @@
+ #define MTP_SET_INTERFACE_MODE     _IOW('M', 2, int)
+ /* Sends an event to the host via the interrupt endpoint */
+ #define MTP_SEND_EVENT             _IOW('M', 3, struct mtp_event)
++/* Same as MTP_SEND_FILE, but the driver prepends the MTP data header
++ * (command and transaction_id come from struct mtp_file_range).
++ */
++#define MTP_SEND_FILE_WITH_HEADER  _IOW('M', 4, struct mtp_file_range)
+ 
+ #endif /* __LINUX_USB_F_MTP_H */
+--- a/drivers/usb/gadget/f_mtp.c	2026-11-01 23:29:52.083315780 -0500
++++ b/drivers/usb/gadget/f_mtp.c	2026-11-01 23:35:01.838565463 -0500
+@@ -76,6 +76,17 @@
+ 
+ static const char shortname[] = "mtp_usb";
+ 
++struct mtp_data_header {
++	/* length of packet, including this header */
++	__le32	length;
++	/* container type (2 for data packet) */
++	__le16	type;
++	/* MTP command code */
++	__le16	command;
++	/* MTP transaction ID */
++	__le32	transaction_id;
++};
++
+ struct mtp_dev {
+ 	struct usb_function function;
+ 	struct usb_composite_dev *cdev;
+@@ -114,6 +125,10 @@
+ 	struct file 				*thread_file;
+ 	loff_t						thread_file_offset;
+ 	size_t						thread_file_length;
++	/* set by MTP_SEND_FILE_WITH_HEADER: driver sends the data header */
++	int							xfer_send_header;
++	uint16_t					xfer_command;
++	uint32_t					xfer_transaction_id;
+ 	/* used to wait for thread to complete current command */
+ 	struct completion			thread_wait;
+ 	/* result from current command */
+@@ -663,10 +678,25 @@
+ 	struct usb_composite_dev *cdev = dev->cdev;
+ 	struct usb_request *req = 0;
+ 	int r = count, xfer, ret;
++	int hdr_size = 0;
++	int send_zlp = 0;
+ 
+ 	DBG(cdev, "mtp_send_file(%lld %d)\n", offset, count);
+ 
+-	while (count > 0) {
++	if (dev->xfer_send_header) {
++		hdr_size = sizeof(struct mtp_data_header);
++		count += hdr_size;
++	}
++
++	/* a transfer ending on a packet boundary needs a zero length packet */
++	if ((count & (dev->ep_in->maxpacket - 1)) == 0)
++		send_zlp = 1;
++
++	while (count > 0 || send_zlp) {
++		/* so we exit after sending the ZLP */
++		if (count == 0)
++			send_zlp = 0;
++
+ 		/* get an idle tx request to use */
+ 		req = 0;
+ 		ret = wait_event_interruptible(dev->write_wq,
+@@ -681,12 +711,33 @@
+ 			xfer = BULK_BUFFER_SIZE;
+ 		else
+ 			xfer = count;
+-		ret = vfs_read(filp, req->buf, xfer, &offset);
+-		if (ret < 0) {
+-			r = ret;
+-			break;
++		if (xfer > 0) {
++			if (hdr_size) {
++				/* prepend the MTP data header */
++				struct mtp_data_header *header =
++					(struct mtp_data_header *)req->buf;
++				header->length = __cpu_to_le32(count);
++				header->type = __cpu_to_le16(2); /* data packet */
++				header->command = __cpu_to_le16(dev->xfer_command);
++				header->transaction_id =
++					__cpu_to_le32(dev->xfer_transaction_id);
++			}
++			ret = vfs_read(filp, req->buf + hdr_size,
++					xfer - hdr_size, &offset);
++			if (ret < 0) {
++				r = ret;
++				break;
++			}
++			if (ret == 0 && xfer > hdr_size) {
++				/* file shorter than announced */
++				r = -EIO;
++				break;
++			}
++			xfer = ret + hdr_size;
++			hdr_size = 0;
++		} else {
++			xfer = 0;
+ 		}
+-		xfer = ret;
+ 
+ 		req->length = xfer;
+ 		ret = usb_ep_queue(dev->ep_in, req, GFP_KERNEL);
+@@ -813,10 +864,8 @@
+ 				dev->thread_file_length);
+ 		}
+ 
+-		if (dev->thread_file) {
+-			fput(dev->thread_file);
+-			dev->thread_file = NULL;
+-		}
++		/* the ioctl holds the fget() reference until the transfer is done */
++		dev->thread_file = NULL;
+ 		dev->thread_command = 0;
+ 		complete(&dev->thread_wait);
+ 	}
+@@ -872,6 +921,7 @@
+ 	switch (code) {
+ 	case MTP_SEND_FILE:
+ 	case MTP_RECEIVE_FILE:
++	case MTP_SEND_FILE_WITH_HEADER:
+ 	{
+ 		struct mtp_file_range	mfr;
+ 
+@@ -902,8 +952,11 @@
+ 		dev->thread_file = filp;
+ 		dev->thread_file_offset = mfr.offset;
+ 		dev->thread_file_length = mfr.length;
++		dev->xfer_send_header = (code == MTP_SEND_FILE_WITH_HEADER);
++		dev->xfer_command = mfr.command;
++		dev->xfer_transaction_id = mfr.transaction_id;
+ 
+-		if (code == MTP_SEND_FILE)
++		if (code == MTP_SEND_FILE || code == MTP_SEND_FILE_WITH_HEADER)
+ 			dev->thread_command = ANDROID_THREAD_SEND_FILE;
+ 		else
+ 			dev->thread_command = ANDROID_THREAD_RECEIVE_FILE;

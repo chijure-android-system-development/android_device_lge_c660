@@ -1,0 +1,7 @@
+# The 2.6.35 LG gadget has no /sys/class/android_usb: map TWRP's sys.usb.config to the
+# per-function usb_composite switch. Enabling "mtp" selects the {mtp, adb} product (0x61f9).
+on property:sys.usb.config=mtp,adb
+    write /sys/devices/virtual/usb_composite/mtp/enable 1
+
+on property:sys.usb.config=adb
+    write /sys/devices/virtual/usb_composite/mtp/enable 0
