@@ -58,7 +58,7 @@ stock-recovery kernel (3.2 MB), so the device tree ships a trimmed 2.6.35 kernel
   listener, so without INET there is no adb interface at all (USB enumerates, but no
   `ff/42/01` interface).
 - `CONFIG_FUSE_FS=y` is required for `adb sideload`.
-- The image is about 4.15 MB (4,349,952 bytes), ~0.85 MB free. `bu`, the FAT tools
+- The image is about 4.35 MB (4,349,952 bytes), ~0.9 MB free. `bu`, the FAT tools
   (`mkfs.fat`, `fsck.fat`, `fatlabel`) and `pigz` are kept; only `libusbhost` is dropped
   in `customrecoveryimg.mk` (MTP is excluded).
 
