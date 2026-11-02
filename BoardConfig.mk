@@ -58,6 +58,7 @@ TW_EXCLUDE_SUPERSU := true
 TW_NO_REBOOT_BOOTLOADER := true
 TW_NO_CPU_TEMP := true
 TW_DEVICE_VERSION := 0.1
+TW_BUILD_AUTHOR := chijure
 
 TW_BRIGHTNESS_PATH := "/sys/class/leds/lcd-backlight/brightness"
 TW_SECONDARY_BRIGHTNESS_PATH := "/sys/class/leds/button-backlight/brightness"
