@@ -45,3 +45,59 @@ The recovery image is expected under:
 ```text
 /home/builder/out/twrp-4.4/target/product/c660/recovery.img
 ```
+
+## Recovery partition and kernel (5 MB)
+
+`recovery` is an MTD partition of 0x500000 bytes. The full TWRP does not fit with the
+stock-recovery kernel (3.2 MB), so the device tree ships a trimmed 2.6.35 kernel:
+
+- `kernel-recovery-slim` (1.95 MB) and the config used to build it,
+  `prebuilt/kernel-recovery-slim.config` (source: `android-msm-2.6.35`, built in the
+  `cm7-builder` container with `arm-eabi-4.4.3`).
+- **Keep `CONFIG_INET=y`.** The Gingerbread `adbd` exits when it cannot open its tcp
+  listener, so without INET there is no adb interface at all (USB enumerates, but no
+  `ff/42/01` interface).
+- The image is about 4.2 MB, ~1 MB free. `bu`, the FAT tools, `pigz` and `libusbhost`
+  are still dropped in `customrecoveryimg.mk`.
+
+`customrecoveryimg.mk` (eng variant only) also installs `mksh` as `/sbin/sh`, the
+Gingerbread `adbd` (this kernel has the legacy `/dev/android_adb`, no FunctionFS) and the
+`clearmisc` service.
+
+## Known quirks and why the tree looks like this
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `adb` never shows up | KitKat `adbd` expects FunctionFS / `android_usb` class | `prebuilt/adbd` (Gingerbread) + `service adbd /sbin/adbd recovery` |
+| Reboot to system ends in recovery | LG's bootloader leaves a flag in `misc` (mtd8); TWRP cannot write the BCB on MTD | `prebuilt/init.clearmisc.rc` runs `erase_image misc` at boot |
+| Screen shows a stale frame after the screen timeout (lock screen with the slider at the end, taps seem ignored) | `msm_fb` only refreshes this command-mode LCD in `FBIOPAN_DISPLAY`; `FBIOPUT_VSCREENINFO` alone does not | `TW_FBIOPAN := true`; `TW_NO_SCREEN_BLANK := true` so the LCD is not re-initialised on wake |
+| `TW_NO_SCREEN_BLANK` had no effect | the flag did not reach `libminuitwrp` | `patches/0005-minuitwrp-propagate-no-screen-blank.patch` |
+| Touch looked broken ("Install" went back to Home) | trimmed ramdisk without `languages/`, not the driver | keep `languages/` and the fonts (touch panel is `touch_mcs6000`, old MT protocol, 240x320 = screen) |
+| Android build does not rebuild after changing flags | KitKat build system does not track `LOCAL_CFLAGS` | delete `obj/SHARED_LIBRARIES/libminuitwrp_intermediates` and `obj/EXECUTABLES/recovery_intermediates`, then check that `recovery.img` md5 changes |
+| LUN stays bound after "Unmount" in USB storage mode | `usb_storage_disable()` writes an empty string, a 0-byte write never reaches the sysfs `store()` | `patches/0006-usb-storage-disable-write-newline.patch` |
+
+The patches under `patches/` apply to `bootable/recovery` (it is not a git checkout here, so
+reapply them after a resync).
+
+## Storage and USB
+
+- The C660 has no internal storage: the microSD (`/dev/block/mmcblk0p1`) is the only storage.
+  `/sd-ext` is not in `recovery.fstab`.
+- MTP is not available with the recovery kernel above (`USB_ANDROID_MTP` and `FUNCTIONFS`
+  are off). USB mass storage works through the legacy gadget:
+  `BOARD_UMS_LUNFILE := /sys/devices/platform/usb_mass_storage/lun%d/file`
+  (Mount > storage > *Mount USB Storage*).
+- Unmount the card on the PC before pressing *Unmount* on the phone.
+
+## Flashing and testing from a running recovery
+
+```bash
+adb push recovery.img /tmp/r.img
+adb shell flash_image recovery /tmp/r.img        # from CM7 use /data/local/tmp
+adb shell dump_image recovery /tmp/rb.img        # pull and compare with the file
+adb reboot recovery
+```
+
+`/tmp` is a tmpfs and is emptied on every reboot. TWRP has no `getevent`, `dmesg` or `logcat`;
+the static busybox of the CWM ramdisk, pushed as `/tmp/busybox`, provides `dmesg`, `od`, `dd`.
+Recovery entry: Vol- + Home + Power.

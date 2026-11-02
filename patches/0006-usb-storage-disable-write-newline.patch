@@ -1,0 +1,14 @@
+--- a/bootable/recovery/partitionmanager.cpp	2026-11-01 23:12:52.199307689 -0500
++++ b/bootable/recovery/partitionmanager.cpp	2026-11-01 23:12:52.218714746 -0500
+@@ -1677,8 +1677,9 @@
+ 
+ int TWPartitionManager::usb_storage_disable(void) {
+ 	int index, ret;
+-	char lun_file[255], ch[2] = {0, 0};
+-	string str = ch;
++	char lun_file[255];
++	// a 0-byte write never reaches the sysfs store(): the legacy lun stays bound, send a newline
++	string str = "\n";
+ 
+ 	for (index=0; index<2; index++) {
+ 		sprintf(lun_file, CUSTOM_LUN_FILE, index);
